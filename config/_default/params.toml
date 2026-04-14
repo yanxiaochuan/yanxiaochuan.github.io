@@ -1,0 +1,32 @@
+colorScheme = "ocean"
+autoSwitchAppearance = false
+enableSearch = true
+
+[header]
+  layout = "fixed-fill-blur"
+
+[footer]
+  showThemeAttribution = false
+  showCopyright = true
+  showScrollToTop = true
+
+[homepage]
+  layout = "page"
+  showRecent = true
+  showRecentItems = 20
+  showMoreLink = false
+  cardView = false
+  cardViewScreenWidth = false
+
+[article]
+  showDate = true
+  showReadingTime = false
+  showSummary = true
+  showTags = false
+  showTableOfContents = false
+  showBreadcrumbs = false
+
+[list]
+  groupByYear = false
+  showCards = false
+  cardView = false

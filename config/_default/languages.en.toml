@@ -1,0 +1,12 @@
+languageCode = "zh-cn"
+languageName = "中文"
+title = "霸都老菜鸟"
+
+[params]
+  displayName = "中文"
+  isoCode = "zh-CN"
+  dateFormat = "2006-01-02"
+
+  [params.author]
+    name = "霸都老菜鸟"
+    headline = "记录与学习"

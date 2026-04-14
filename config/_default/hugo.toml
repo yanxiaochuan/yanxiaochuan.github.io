@@ -1,0 +1,7 @@
+baseURL = "https://yanxiaochuan.github.io/"
+defaultContentLanguage = "en"
+enableRobotsTXT = true
+theme = "blowfish"
+
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
