@@ -1,7 +1,7 @@
 ---
-title: "A2UI 深度思考：当 Agent 开始画 UI，我们真的准备好了吗？"
+title: "A2UI协议：让Agent把UI“说”出来"
 date: 2026-04-14
 tags: ["报告", "AI"]
-summary: "A2UI 深度思考：当 Agent 开始画 UI，我们真的准备好了吗？"
-externalUrl: "/reports/a2ui-think.html"
+summary: "A2UI协议：让Agent把UI“说”出来"
+externalUrl: "/reports/a2ui.html"
 ---

@@ -582,5 +582,215 @@
 
 </article>
 
+<!-- ========== 互动工具栏 ========== -->
+<style>
+  .interact-bar {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-top: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+  .interact-bar .left { display: flex; align-items: center; gap: 20px; }
+  .interact-bar .right { display: flex; align-items: center; gap: 10px; }
+  .view-count { font-size: 14px; color: #666; }
+  .share-btn {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #555;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .share-btn:hover { border-color: #4f6ef7; color: #4f6ef7; }
+  .share-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 9999;
+  }
+  .share-toast.show { opacity: 1; }
+  .wechat-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+  }
+  .wechat-overlay.show { display: flex; }
+  .wechat-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .wechat-box p { margin: 0 0 16px; font-size: 15px; color: #333; }
+  .wechat-box img { width: 200px; height: 200px; border-radius: 4px; }
+  .wechat-box .close-btn {
+    margin-top: 16px;
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #666;
+  }
+  @media (prefers-color-scheme: dark) {
+    .interact-bar { border-color: #333; }
+    .view-count { color: #aaa; }
+    .share-btn { border-color: #444; color: #aaa; }
+    .share-btn:hover { border-color: #4f6ef7; color: #4f6ef7; }
+  }
+</style>
+
+<div class="interact-bar">
+  <div class="left">
+    <div data-lyket-type="like" data-lyket-id="A2UI-Thinking" data-lyket-namespace="reports"></div>
+    <span class="view-count" id="gc-views">👁 加载中…</span>
+  </div>
+  <div class="right">
+    <button class="share-btn" onclick="copyLink()">📋 复制链接</button>
+    <button class="share-btn" onclick="shareWechat()">💬 微信</button>
+    <button class="share-btn" onclick="shareWeibo()">🔗 微博</button>
+    <button class="share-btn" onclick="shareXiaohongshu()">📕 小红书</button>
+  </div>
+</div>
+
+<div class="share-toast" id="toast">链接已复制！</div>
+
+<div class="wechat-overlay" id="wechatOverlay" onclick="closeWechat(event)">
+  <div class="wechat-box">
+    <p>打开微信扫一扫，分享给好友</p>
+    <img id="wechat-qr" src="" alt="二维码加载中" />
+    <p style="font-size:12px;color:#999;margin-top:10px;">或长按复制链接发送给好友</p>
+    <button class="close-btn" onclick="closeWechat()">关闭</button>
+  </div>
+</div>
+
+<!-- Lyket 点赞 -->
+<script src="https://unpkg.com/@lyket/widget@latest/dist/lyket.js?apiKey=pt_4ccd94c1ab166eb8ec91ad3222405d"></script>
+
+<!-- GoatCounter 浏览量 -->
+<script data-goatcounter="https://yanxiaochuan.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+<script>
+  var t = setInterval(function() {
+    if (window.goatcounter && window.goatcounter.visit_count) {
+      clearInterval(t);
+      document.querySelector('#gc-views').textContent = '';
+      window.goatcounter.visit_count({
+        append: '#gc-views',
+        type: 'html',
+        no_branding: true,
+        attr: {
+          style: 'font-size:14px;color:inherit;border:none;background:none;display:inline;padding:0;margin:0;'
+        }
+      });
+      setTimeout(function() {
+        var el = document.querySelector('#gc-views');
+        if (el) {
+          el.innerHTML = el.innerHTML.replace(/Views for this page:/gi, '');
+          var num = el.innerText.trim();
+          el.innerHTML = '👁 ' + num + ' 次浏览';
+        }
+      }, 1500);
+    }
+  }, 100);
+</script>
+
+<!-- 分享功能 -->
+<script>
+  function showToast(msg) {
+    var toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(function(){ toast.classList.remove('show'); }, 2000);
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href).then(function() {
+      showToast('链接已复制！');
+    }).catch(function() {
+      var input = document.createElement('input');
+      input.value = window.location.href;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showToast('链接已复制！');
+    });
+  }
+
+  function shareWechat() {
+    var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(window.location.href);
+    document.getElementById('wechat-qr').src = qrUrl;
+    document.getElementById('wechatOverlay').classList.add('show');
+  }
+
+  function closeWechat(e) {
+    if (!e || e.target === document.getElementById('wechatOverlay') || e.target.classList.contains('close-btn')) {
+      document.getElementById('wechatOverlay').classList.remove('show');
+    }
+  }
+
+  function shareWeibo() {
+    var url = encodeURIComponent(window.location.href);
+    var title = encodeURIComponent(document.title);
+    window.open('https://service.weibo.com/share/share.php?url=' + url + '&title=' + title, '_blank');
+  }
+
+  function shareXiaohongshu() {
+    navigator.clipboard.writeText(document.title + ' ' + window.location.href).then(function() {
+      showToast('已复制标题和链接，打开小红书粘贴分享');
+    }).catch(function() {
+      var input = document.createElement('input');
+      input.value = document.title + ' ' + window.location.href;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showToast('已复制标题和链接，打开小红书粘贴分享');
+    });
+  }
+</script>
+
+<!-- Giscus 评论 -->
+<div style="max-width:800px;margin:40px auto;padding:0 20px;">
+  <script src="https://giscus.app/client.js"
+    data-repo="yanxiaochuan/yanxiaochuan.github.io"
+    data-repo-id="R_kgDOSCLsxw"
+    data-category="Announcements"
+    data-category-id="DIC_kwDOSCLsx84C7Buc"
+    data-mapping="pathname"
+    data-reactions-enabled="1"
+    data-theme="preferred_color_scheme"
+    data-lang="zh-CN"
+    async></script>
+</div>
+
+
 </body>
 </html>
