@@ -5,12 +5,3 @@ theme = "blowfish"
 
 [outputs]
   home = ["HTML", "RSS", "JSON"]
-
-[article]
-  showDate = true
-  showReadingTime = false
-  showSummary = true
-  showTags = false
-  showTableOfContents = false
-  showBreadcrumbs = false
-  showComments = true

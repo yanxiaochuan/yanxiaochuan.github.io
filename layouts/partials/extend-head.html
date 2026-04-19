@@ -1,0 +1,125 @@
+<!-- GoatCounter -->
+<script data-goatcounter="https://yanxiaochuan.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+<!-- Lyket -->
+<script src="https://unpkg.com/@lyket/widget@latest/dist/lyket.js?apiKey=pt_4ccd94c1ab166eb8ec91ad3222405d"></script>
+<!-- 宽度与交互栏样式 -->
+<style>
+  .article-content.max-w-prose,
+  #single_header.max-w-prose,
+  footer.max-w-prose {
+    max-width: 56rem !important;
+  }
+
+  /* ===== 交互栏 ===== */
+  .interact-bar {
+    max-width: 56rem;
+    margin: 2rem auto 0;
+    padding: 1.2rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    border-top: 1px solid rgba(128,128,128,0.15);
+  }
+  .interact-bar .ib-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .interact-bar .ib-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ib-views {
+    font-size: 0.875rem;
+    opacity: 0.65;
+  }
+
+  /* 圆形图标分享按钮（与 Blowfish 内置 sharing-links 风格一致） */
+  .ib-share-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    background: rgb(209 213 219);
+    color: rgb(55 65 81);
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    text-decoration: none;
+    line-height: 1;
+  }
+  .ib-share-icon:hover {
+    background: rgb(59 130 246);
+    color: #fff;
+  }
+  .ib-share-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+  }
+
+  /* Toast */
+  .ib-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s;
+    z-index: 9999;
+  }
+  .ib-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* WeChat 弹窗 */
+  .ib-wx-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 9998;
+    justify-content: center;
+    align-items: center;
+  }
+  .ib-wx-overlay.show { display: flex; }
+  .ib-wx-box {
+    background: #fff;
+    color: #333;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    max-width: 320px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  }
+  .ib-wx-box img { margin: 12px auto; border-radius: 8px; }
+  .ib-wx-close {
+    margin-top: 12px;
+    padding: 6px 24px;
+    border: none;
+    border-radius: 6px;
+    background: #07c160;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  /* Lyket 微调 */
+  [data-lyket-type] button {
+    font-size: 0.9rem !important;
+  }
+</style>

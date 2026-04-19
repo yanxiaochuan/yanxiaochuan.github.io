@@ -1,0 +1,91 @@
+{{ $lyketId := .File.ContentBaseName | urlize }}
+<div class="interact-bar">
+  <div class="ib-left">
+    <div data-lyket-type="like" data-lyket-id="{{ $lyketId }}" data-lyket-namespace="posts"></div>
+    <span class="ib-views" id="ib-gc-views"></span>
+  </div>
+  <div class="ib-right">
+    <!-- 复制链接 -->
+    <button class="ib-share-icon" onclick="ibCopy()" title="复制链接">
+      <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+    </button>
+    <!-- 微信 -->
+    <button class="ib-share-icon" onclick="ibWechat()" title="分享到微信" style="background:#07c160;color:#fff;">
+      <svg viewBox="0 0 24 24"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05a6.402 6.402 0 0 1-.271-1.824c0-3.556 3.207-6.442 7.155-6.442.182 0 .36.014.54.025C16.089 4.32 12.691 2.188 8.691 2.188zm8.695 5.194c3.566 0 6.614 2.538 6.614 5.766 0 1.756-.93 3.34-2.397 4.413a.477.477 0 0 0-.172.537l.272 1.026a.3.3 0 0 1 .022.11.238.238 0 0 1-.235.238.263.263 0 0 1-.135-.044l-1.316-.77a.698.698 0 0 0-.58-.079 8.26 8.26 0 0 1-2.073.265c-3.566 0-6.614-2.538-6.614-5.766 0-3.228 3.048-5.696 6.614-5.696z"/></svg>
+    </button>
+    <!-- 微博 -->
+    <button class="ib-share-icon" onclick="ibWeibo()" title="分享到微博" style="background:#e6162d;color:#fff;">
+      <svg viewBox="0 0 24 24"><path d="M10.098 20.323c-3.977.391-7.414-1.406-7.672-4.02-.259-2.609 2.759-5.047 6.74-5.441 3.979-.394 7.413 1.404 7.671 4.018.259 2.6-2.759 5.049-6.739 5.443zM9.05 17.219c-.384.616-1.208.884-1.829.602-.612-.279-.793-.991-.406-1.593.379-.595 1.176-.861 1.793-.583.631.283.822.997.442 1.574zm1.27-1.627c-.141.237-.449.353-.689.253-.236-.09-.307-.361-.168-.592.141-.226.438-.344.672-.248.239.09.315.36.185.587zm.176-2.719c-1.893-.493-4.033.45-4.857 2.118-.836 1.704-.026 3.591 1.886 4.21 1.983.642 4.318-.341 5.132-2.179.8-1.793-.201-3.642-2.161-4.149zM17.108 3.449c-2.065-.574-4.41.263-5.466 1.877-.252.38-.395.804-.435 1.235-.026.319.136.619.413.77.276.15.614.113.852-.089.122-.101.213-.235.265-.386.155-.452.42-.862.773-1.192.81-.758 2.023-1.003 3.112-.652 1.107.348 1.884 1.31 2.049 2.442.074.505.007 1.02-.195 1.49-.097.23-.08.493.046.708.126.214.347.355.594.38.326.033.619-.176.734-.478.291-.757.41-1.573.344-2.389-.148-1.821-1.378-3.378-3.086-3.716zm-1.059 2.453c-.854-.278-1.837.096-2.252.848-.104.188-.166.395-.185.608-.013.155.068.303.207.376.138.073.305.056.426-.044a.495.495 0 0 0 .138-.198c.065-.181.177-.34.324-.464.322-.273.773-.38 1.188-.272.42.108.735.393.862.762.063.18.048.375-.038.547a.469.469 0 0 0 .024.462c.065.112.178.191.308.197a.47.47 0 0 0 .367-.203c.224-.36.296-.79.2-1.204-.192-.84-.872-1.493-1.569-1.415z"/></svg>
+    </button>
+    <!-- 小红书 -->
+    <button class="ib-share-icon" onclick="ibXhs()" title="分享到小红书" style="background:#fe2c55;color:#fff;">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm3.5 14.5h-7a.5.5 0 0 1-.5-.5V8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5zM9 8.5v7h6v-7H9zm2.5 2h1v3h-1v-3z"/></svg>
+    </button>
+  </div>
+</div>
+<div class="ib-toast" id="ib-toast"></div>
+<div class="ib-wx-overlay" id="ibWxOverlay" onclick="if(event.target===this)ibCloseWx()">
+  <div class="ib-wx-box">
+    <p style="font-weight:600;margin:0 0 8px;">打开微信扫一扫，分享给好友</p>
+    <img id="ib-wx-qr" src="" alt="二维码" width="200" height="200" />
+    <p style="font-size:12px;color:#999;margin:8px 0 0;">或复制链接发送给好友</p>
+    <button class="ib-wx-close" onclick="ibCloseWx()">关闭</button>
+  </div>
+</div>
+<script>
+(function(){
+  var gc=setInterval(function(){
+    if(window.goatcounter&&window.goatcounter.visit_count){
+      clearInterval(gc);
+      var el=document.getElementById('ib-gc-views');
+      window.goatcounter.visit_count({append:'#ib-gc-views',type:'html',no_branding:true});
+      setTimeout(function(){
+        if(el){var t=el.innerText.replace(/[^0-9]/g,'')||'0';el.innerHTML='👁 '+t+' 次浏览';}
+      },2000);
+    }
+  },200);
+  setTimeout(function(){clearInterval(gc);},10000);
+
+  window.ibShowToast=function(msg){
+    var t=document.getElementById('ib-toast');
+    t.textContent=msg;t.classList.add('show');
+    setTimeout(function(){t.classList.remove('show');},2000);
+  };
+
+  window.ibCopy=function(){
+    var url=location.href;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(url).then(function(){ibShowToast('链接已复制！');});
+    }else{
+      var a=document.createElement('textarea');a.value=url;
+      document.body.appendChild(a);a.select();document.execCommand('copy');
+      document.body.removeChild(a);ibShowToast('链接已复制！');
+    }
+  };
+
+  window.ibWechat=function(){
+    var url=encodeURIComponent(location.href);
+    document.getElementById('ib-wx-qr').src=
+      'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+url;
+    document.getElementById('ibWxOverlay').classList.add('show');
+  };
+  window.ibCloseWx=function(){
+    document.getElementById('ibWxOverlay').classList.remove('show');
+  };
+
+  window.ibWeibo=function(){
+    var u=encodeURIComponent(location.href);
+    var t=encodeURIComponent(document.title);
+    window.open('https://service.weibo.com/share/share.php?url='+u+'&title='+t,'_blank','width=600,height=500');
+  };
+
+  window.ibXhs=function(){
+    var text=document.title+' '+location.href;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(text).then(function(){
+        ibShowToast('已复制标题和链接，请打开小红书粘贴分享');
+      });
+    }else{ibShowToast('请手动复制链接分享到小红书');}
+  };
+})();
+</script>

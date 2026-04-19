@@ -1,6 +1,8 @@
 colorScheme = "ocean"
+defaultAppearance = "light"
 autoSwitchAppearance = false
 enableSearch = true
+enableCodeCopy = true
 
 [header]
   layout = "fixed-fill-blur"
@@ -9,24 +11,34 @@ enableSearch = true
   showThemeAttribution = false
   showCopyright = true
   showScrollToTop = true
+  showAppearanceSwitcher = false
 
 [homepage]
-  layout = "page"
+  layout = "profile"
   showRecent = true
-  showRecentItems = 20
-  showMoreLink = false
+  showRecentItems = 10
+  showMoreLink = true
+  showMoreLinkDest = "/posts"
   cardView = false
   cardViewScreenWidth = false
 
 [article]
   showDate = true
+  showDateUpdated = false
   showReadingTime = false
-  showSummary = true
+  showWordCount = false
+  showSummary = false
+  showTaxonomies = false
   showTags = false
-  showTableOfContents = false
+  showTableOfContents = true
   showBreadcrumbs = false
+  showComments = true
+  showPagination = false
+  showHeadingAnchors = true
+  sharingLinks = false
 
 [list]
   groupByYear = false
   showCards = false
   cardView = false
+  showSummary = false

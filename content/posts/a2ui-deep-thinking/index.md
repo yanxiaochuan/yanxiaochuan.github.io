@@ -1,0 +1,156 @@
+---
+title: "A2UI 深度思考：当 Agent 开始画 UI，我们真的准备好了吗？"
+date: 2026-04-14
+summary: "从工程实践出发，聊聊 A2UI 与 AG-UI 的边界、LLM 驱动 UI 的可靠性困境，以及务实的落地策略"
+tags: ["AI", "A2UI", "Agent", "前端"]
+---
+
+{{< lead >}}
+上一篇文章里，我介绍了 A2UI 的基本概念和协议设计。写完之后我做了更多的思考和调研，发现围绕 A2UI 有几个更深层次的问题值得认真讨论。这篇文章不再重复介绍 A2UI 是什么，而是聚焦在四个我认为最关键的议题上：A2UI 与 AG-UI 到底是什么关系、LLM 直接生成 UI 的可靠性怎么保障、从 v0.8 到 v0.9 的哲学转向意味着什么，以及当下真正务实的工程策略应该是什么。
+{{< /lead >}}
+
+## 一、A2UI 与 AG-UI：名字像兄弟，本质是两件事
+
+AG-UI（Agent-User Interaction Protocol）和 A2UI（Agent-to-User Interface）这两个名字实在太像了，很容易让人以为它们是竞争关系或者同一件事的不同版本。但实际深入看过两者的规范后，我的结论是：它们不仅不冲突，而且是在解决完全不同维度的问题。
+
+AG-UI 由 CopilotKit 团队于 2025 年 5 月发起，解决的是 Agent 后端与前端应用之间**怎么通信**的问题。它是一个基于事件的传输协议，标准化了诸如"Agent 开始推理了""文本在逐 token 输出""工具调用发起了""状态更新了"这些事件的格式和传输方式。你可以把它理解为 Agent 时代的 HTTP——它不关心你传的内容是什么，它只确保内容可靠地、实时地从 A 点到达 B 点。
+
+A2UI 由 Google 于 2025 年 12 月正式开源发布（v0.8 规范的内部创建时间可追溯到 2025 年 9 月），解决的是 Agent 要向用户**展示什么 UI** 的问题。它是一个声明式的 UI 描述格式，定义了组件结构、数据绑定、事件处理等一整套规范。Agent 输出的 A2UI JSONL，就是前端可以直接解析并渲染的 UI 描述。
+
+{{< alert >}}
+**一句话区分：** AG-UI 是水管，A2UI 是水管里流的水。AG-UI 定义的是 How（怎么传），A2UI 定义的是 What（传什么）。
+{{< /alert >}}
+
+在实际的全栈架构中，它们是这样配合的：
+
+{{< mermaid >}}
+graph LR
+    A[用户交互] --> B[AG-UI 传输请求]
+    B --> C[Agent 推理]
+    C --> D[生成 A2UI 描述]
+    D --> E[AG-UI 流式回传]
+    E --> F[前端渲染]
+{{< /mermaid >}}
+
+*AG-UI 负责两端的实时通信管道，A2UI 负责 UI 描述的内容格式。*
+
+值得注意的是，A2UI 是明确声明 "transport-agnostic" 的——你可以用 AG-UI 传 A2UI，也可以用 A2A 协议传（这是目前的另一种 Stable 状态的传输方式），甚至用普通的 SSE、WebSocket 或 REST 都行（这些目前处于 Planned/Proposed 阶段）。同样，AG-UI 也不是只能传 A2UI，它可以传 OpenAI 的 Open-JSON-UI、MCP-Apps，或者你自己定义的任何 UI 格式。两者是正交的关系，组合使用但互不绑定。
+
+如果把当前 Agent 领域的协议栈画出来，会形成这样的分层：AG-UI 处于 Agent 与用户的通信层，MCP（Anthropic 发起）处于 Agent 与工具/数据的连接层，A2A（Google 发起）处于 Agent 与 Agent 的协调层，而 A2UI 则是独立于这三层之外的 UI 描述规范。它们不是竞争者，而是互补的拼图。
+
+## 二、核心追问：LLM 直接生成 UI，靠谱吗？
+
+这是我在调研 A2UI 过程中反复在想的一个问题，也是我认为目前讨论 A2UI 时被严重低估的话题。
+
+在 A2UI 的设计中，LLM 在组件目录（Catalog）的约束下直接输出符合规范的组件描述。中间不再需要后端代码作为"翻译层"来判断和封装 UI 结构。这意味着 UI 的正确性在很大程度上取决于 LLM 的输出质量。但 LLM 本质上是概率模型——它不是在"执行规范"，而是在"猜测最可能的下一个 token"。它完全可能输出引用了不存在的组件 ID 的 JSON、使用了目录中没有的组件类型、生成了语法正确但语义荒谬的 UI 结构、或者在流式输出中间某一行 JSON 直接畸形。
+
+如果 LLM 出了错，给到用户的就是乱码、空白、或者完全牛头不对马嘴的界面。这不是理论风险，而是工程必然。
+
+### A2UI 的容错设计体系
+
+公平地说，A2UI 的设计者显然深刻地意识到了这个问题。翻阅规范文档，可以看到协议在多个层面做了应对，形成了一套由浅入深的容错体系：
+
+**第 1 层：从源头降低出错概率**
+
+A2UI v0.8 规范开篇就写明："最关键的设计驱动力是协议必须容易被 LLM 生成。"围绕这个目标，选择了扁平邻接表（而非深层嵌套 JSON）来描述组件树——规范原文指出"Requiring an LLM to generate a perfectly nested JSON tree in a single pass is difficult and error-prone"。每条 JSONL 消息是自包含的、无状态的，LLM 不需要"记住"前文就能生成下一条。组件目录作为 JSON Schema 提供给 LLM，可以配合 structured output 模式来约束输出格式。
+
+**第 2 层：流式逐行解析 + 跳过坏消息**
+
+A2UI 使用 JSONL 格式，每行一个独立 JSON 对象。如果某一行畸形，客户端可以直接跳过这一行，继续处理下一行。官方 Data Flow 文档明确写了错误处理策略："Malformed messages: Skip and continue, or send error back to agent for correction." 出错的影响范围被控制在单个组件级别，不会因为一条坏消息拖垮整个界面。
+
+**第 3 层：渲染信号 + 缓冲校验窗口**
+
+在 v0.8 中，LLM 流式输出组件时，前端先缓存不渲染，等收到 `beginRendering` 消息后才开始构建 UI 树。规范写道："The client buffers incoming components and data but waits for this explicit signal before attempting the first render, ensuring the initial view is coherent." 这提供了一个天然的校验窗口——客户端可以在渲染前检查组件树完整性。
+
+> **版本说明：** 在 v0.9 草案中，`beginRendering` 已被 `createSurface` 替代，渲染触发机制变为"只要存在一个 ID 为 'root' 的有效组件树，客户端即可开始渲染"。缓冲的理念仍在，但触发方式更加灵活。
+
+**第 4 层：组件目录白名单机制**
+
+A2UI 的安全模型明确规定："Component catalog whitelisting — Agents can only request components in the client's pre-approved catalog. Unknown types get rejected." 如果 LLM 幻觉出了一个目录里没有的组件类型，渲染器会拒绝它。在实践中，社区普遍建议客户端实现 fallback 机制——用一个安全的默认组件替代被拒绝的未知组件，而不是留白或崩溃。但需要注意的是，这种 fallback 行为是推荐做法，并非协议的强制规定。
+
+**第 5 层：结构化错误反馈 + LLM 自我纠正**
+
+客户端可以通过 `error` 消息类型把渲染错误回传给 Agent。在 v0.9 中，这个机制被升级为正式的 `VALIDATION_FAILED` 错误格式，包含具体的出错路径和原因描述，明确支持 LLM 在下一轮对话中据此自我纠正。
+
+### 但这不是"解决"，而是"缓解"
+
+以上这些设计加在一起，本质上是一套**"降低概率 + 控制爆炸半径 + 优雅降级"**的策略。它们能大幅降低用户看到乱码的概率，但无法从根本上消除 LLM 输出错误的可能性。
+
+更棘手的是语义级别的错误。LLM 完全可能输出一个格式完美、通过所有校验、但内容完全答非所问的 UI——比如用户问航班信息，LLM 输出了一个酒店预订表单。A2UI 的格式校验层面会认为它"正确"，但对用户来说就是错的。这类错误，任何协议层面的设计都解决不了，只能依赖模型能力本身的提升。
+
+## 三、从 v0.8 到 v0.9：一次被低估的哲学转向
+
+在调研中我发现了一个非常重要但容易被忽略的变化——A2UI 从 v0.8 到 v0.9 不仅仅是 API 改名，而是一次根本性的设计哲学转向。这个转向恰恰回应了"LLM 输出不可靠怎么办"这个核心问题。
+
+v0.8 的设计哲学是 **"Structured Output First"**——优先依赖 LLM 的 JSON mode 或 function calling 等 structured output 能力，让模型在推理时被 schema 强制约束，输出就是最终结果。这个思路简洁理想，但在实践中遇到了问题：v0.8 的格式对 LLM 来说仍然不够友好，深层嵌套的 wrapper 结构、数组形式的键值对、显式类型标注（如 `literalString`、`valueNumber`）等设计，让 LLM 经常生成不合规的输出。
+
+v0.9 做出了一个根本性的转向：**"Prompt First"**。不再强依赖 structured output 模式，而是把 schema 直接嵌入 LLM 的 system prompt，同时引入了配套的自然语言规则文件（`basic_catalog_rules.txt`）来补充 JSON Schema 难以表达的约束。整个流程变成了一个显式的三步循环：**Prompt → Generate → Validate**。
+
+| | v0.8：Structured Output First | v0.9：Prompt First |
+|---|---|---|
+| **核心思路** | 依赖 LLM 的 JSON mode 强制约束输出格式 | 把 schema 嵌入 system prompt，用更自然的 JSON 结构 |
+| **校验方式** | 输出即最终结果，没有显式校验纠错环节 | LLM 输出后做后置 validate，不合格就结构化反馈让 LLM 自我纠正 |
+| **格式设计** | key-based wrapper、显式类型标注、数组形式键值对 | property-based discriminator、原生 JSON 类型、标准 JSON 对象 |
+
+这个转向的意义在于：**A2UI 的设计者用实践证明了"仅靠 structured output 不够可靠"，并且给出了他们的答案——后置校验 + 结构化错误反馈 + LLM 自我纠正的反馈循环。**
+
+也就是说，在 v0.9 的最佳实践中，并不是"LLM 输出什么就直接渲染什么"。而是 LLM 输出之后，先经过 schema 校验，合格则渲染，不合格则把具体的 `VALIDATION_FAILED` 错误（包含出错路径和原因）反馈给 LLM，让它在下一轮自我修正。这实质上是在协议层面内建了一个质量控制闭环。
+
+{{< alert >}}
+v0.9 对格式本身也做了大量简化——`dataModelUpdate` 的 contents 从数组键值对改为标准 JSON 对象，组件定义从 key-based wrapper 改为 property-based discriminator，数据绑定从 `literalString` 改为原生 JSON 类型。这些改动的共同目标都是"让 LLM 更容易生成正确的输出"。官方 evolution guide 的原话是：LLMs are trained to generate JSON objects. Forcing them to generate an "adjacency list" representation of a map was inefficient and error-prone.
+{{< /alert >}}
+
+## 四、一个容易被忽略的范式转换
+
+在讨论工程策略之前，我想先指出一个更大图景层面的变化，因为它直接影响我们对 A2UI 价值的判断。
+
+在 A2UI 出现之前，大多数团队（包括我们自己）构建 Agent Chat 界面的做法是这样的：LLM 输出一段意图 JSON，后端代码解析这段 JSON，判断是否需要出卡片、出什么类型的卡片，然后手动拼装卡片的数据结构，最后交给前端渲染。这个模式下，UI 结构的决策权在**后端开发者**手里——LLM 只负责输出原始数据，"要不要出卡片、出什么卡片"是工程师写的 if-else 决定的。
+
+A2UI 的模式则完全不同。LLM 在组件目录的约束下，自主决定用什么组件、怎么组合，直接生成可渲染的 UI 描述。后端代码不再需要做 UI 决策。
+
+这里的范式转换不是技术层面的"用 A2UI 格式替代自定义 JSON"，而是决策权的转移——**从工程师硬编码的规则，转向 Agent 基于上下文的动态判断。**
+
+这个转变带来的好处是显而易见的：Agent 可以根据对话上下文灵活选择最合适的 UI 组合方式，而不受限于工程师预先想到的那几种固定模板。但代价同样明显：你把 UI 决策权交给了一个概率模型，就必须接受它偶尔会做出错误决策的现实。
+
+> **关于样式控制的一个澄清：** A2UI 把 UI 决策权交给 Agent，但**不**把样式控制权交给 Agent。Agent 只能发送语义级别的"暗示"——比如 v0.8 中的 `usageHint: "h1"`，v0.9 中的 `variant: "primary"`，以及 surface 级别的 theme 参数（如 `primaryColor`）。具体怎么渲染、什么颜色、什么字号，完全由客户端自己的设计系统决定。A2UI 官方的表述是"Host app controls — inherits design system"。
+
+## 五、务实的落地策略：分场景、分风险、渐进推进
+
+基于以上思考，当下最务实的工程策略不是"全面拥抱 A2UI"或"完全不碰 A2UI"，而是根据场景风险等级做分层处理。以下是我们自己的工程实践思路，不代表官方推荐，供参考。
+
+| 场景 | 策略 | 说明 |
+|------|------|------|
+| **高风险**（支付、订单、敏感数据） | 继续后端驱动 UI | UI 结构必须 100% 可控。LLM 只负责输出数据 |
+| **中风险**（商品推荐、搜索结果） | A2UI + 后置校验层 | 让 LLM 生成 A2UI，利用 v0.9 的 validate 做后置校验，不符合就降级 |
+| **低风险**（信息展示、辅助决策） | 完全 Agent 驱动 | 完全让 LLM 自由使用 A2UI 生成 UI |
+| **渐进演进** | 从低风险向高风险推进 | 先在低风险场景验证稳定性，积累经验后逐步推进 |
+
+### 工程实践中的几个建议
+
+第一，**组件目录的设计至关重要。** 这是你唯一能控制 LLM "发挥空间"的抓手。目录越精简、组件定义越严格，LLM 出错的概率越低。不要一上来就开放几十种组件，先从五六个核心组件开始，验证稳定性后再逐步扩展。
+
+第二，**关注 v0.9 的 "Prompt First" 模式。** 如果你现在开始接入 A2UI，建议直接按照 v0.9 的思路设计——把 schema 嵌入 system prompt，配合后置 validate 和 `VALIDATION_FAILED` 反馈循环。虽然 v0.9 目前还是 Draft 状态（预计 Q1 2026 发布 Release Candidate），但它的格式设计明显比 v0.8 更适合 LLM 生成，且 v0.8 未来会被替代。
+
+第三，**在前端实现健壮的 fallback 机制。** 每个组件位置都应该有一个兜底方案——未知组件类型渲染为普通文本块，数据绑定失败显示为占位符，整个 surface 渲染失败就退回到纯文本回复。用户看到一个朴素但正确的文本回复，远好过看到一个华丽但崩溃的 UI。
+
+第四，**做好可观测性。** 记录每一次 A2UI 渲染的成功率、validate 通过率、fallback 触发率、LLM 自我纠正次数。这些数据是你判断"能否把 A2UI 推进到更高风险场景"的核心依据。
+
+## 六、更大的图景：协议生态正在快速成形
+
+把视野拉远一点来看，A2UI 不是一个孤立的技术方案，而是正在成型的 Agent 协议生态中的一个组成部分。AG-UI（2025 年 5 月发布）解决 Agent 与前端的通信、MCP（Anthropic 发起）解决 Agent 与工具的连接、A2A（Google 发起）解决 Agent 与 Agent 的协调、A2UI（2025 年 12 月发布）解决 Agent 生成 UI 的描述格式。这四个协议分别由不同团队发起，但正在形成一个互补的、可组合的协议栈。
+
+CopilotKit 同时深度参与了 AG-UI 和 A2UI 两个项目——他们既是 AG-UI 的发起方，也是 A2UI 的 launch partner 和 A2UI Composer 的贡献者，在两者之间扮演了桥梁角色。Google 发起了 A2A 和 A2UI，两者在事件传输上天然互通——A2UI 的用户交互事件就是通过 A2A 消息回传给 Agent 的。
+
+当然，这个生态仍然非常早期。A2UI 目前 v0.8 为 Stable 版本，v0.9 为 Draft 版本，根据官方路线图，React 渲染器计划在 Q1 2026 完成，SwiftUI 和 Jetpack Compose 计划在 Q2 2026，v1.0 的稳定版则要等到 Q4 2026。标准之间的边界、兼容性、最佳实践，都还需要大量的实际工程验证来沉淀。
+
+## 七、写在最后
+
+{{< alert >}}
+A2UI 代表的方向——让 Agent 直接驱动 UI 生成——几乎确定是未来的趋势。但在当下，我们需要的不是盲目追新，而是带着工程纪律去渐进式地拥抱这个变化。先理解边界，再选择场景，然后用数据验证，最后逐步推进。这可能是面对任何新协议最负责任的态度。
+{{< /alert >}}
+
+---
+
+*本文基于 A2UI v0.8（Stable）/ v0.9（Draft）规范、AG-UI 协议文档及 A2UI 官方路线图撰写。分场景落地策略为团队工程实践中的思考，供参考讨论。*
+
+*参考资料：[a2ui.org](https://a2ui.org/) · [docs.ag-ui.com](https://docs.ag-ui.com/) · [v0.9 Evolution Guide](https://a2ui.org/specification/v0.9-evolution-guide/) · [A2UI Roadmap](https://a2ui.org/roadmap/)*
