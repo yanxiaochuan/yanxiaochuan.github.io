@@ -9,3 +9,9 @@ title = "霸都老菜鸟"
 
   [params.author]
     name = "豆沫稀饭"
+    headline = "一个搞技术的，记录 AI、工程思考的老菜鸟"
+    bio = "关注 AI Agent、AI 工程化，偶尔记录点自己的碎碎念"
+    image = "author.png"
+    links = [
+      { github = "https://github.com/yanxiaochuan" },
+    ]
